@@ -28,27 +28,36 @@ namespace Port_Status_Checker
         }
 
         private async Task<bool> CheckTCPPortAsync(string ip, int port)
+{
+    using (TcpClient tcpClient = new TcpClient())
+    {
+        try
         {
-            try
+            var connectTask = tcpClient.ConnectAsync(ip, port);
+            var timeoutTask = Task.Delay(3000); // 3 saniye zaman aşımı
+
+            if (await Task.WhenAny(connectTask, timeoutTask) == connectTask)
             {
-                using (TcpClient tcpClient = new TcpClient())
+                // Bağlantı başarılı oldu mu?
+                if (tcpClient.Connected)
                 {
-                    var connectTask = tcpClient.ConnectAsync(ip, port);
-                    if (await Task.WhenAny(connectTask, Task.Delay(3000)) == connectTask)
-                    {
-                        return true; // Bağlandı
-                    }
-                    else
-                    {
-                        return false; // Zaman aşımına uğradı
-                    }
+                    tcpClient.Close(); // Bağlantıyı kapat
+                    return true;
                 }
             }
-            catch (SocketException)
-            {
-                return false;
-            }
+            return false; // Zaman aşımı veya başarısız bağlantı
         }
+        catch (SocketException)
+        {
+            return false; // Port kapalı veya bağlantı reddedildi
+        }
+        catch (Exception)
+        {
+            return false; // Beklenmeyen hata
+        }
+    }
+}
+
 
 
 
